@@ -44,7 +44,7 @@ def imgc(raw, destination):
                 dst.write(b'lol!' + struct.pack('<I', 8 + len(packed)) + packed)
 
 def generate(kind):
-    with tempfile.TemporaryDirectory(prefix='gt-imgc-fixture-') as temp:
+    with tempfile.TemporaryDirectory(prefix='imgc-fixture-') as temp:
         base = Path(temp)
         contents = {
             'game_static': {'golf/shared.txt': b'static wins\n', 'golf/static.dat': bytes(range(256)) * 400,
@@ -59,9 +59,12 @@ def generate(kind):
         # Deliberately use p1=static, p2=backup, p3=dynamic, unlike the real p3/p5/p7.
         labels = ['game_static', 'db_backup', 'game_dynamic']
         if kind == 'missing-label': labels[1] = 'other_backup'
+        if kind in ('unlabelled-backup', 'ambiguous-backup', 'missing-backup'): labels[1] = ''
+        if kind == 'ambiguous-backup': labels.append('')
+        if kind == 'missing-backup': contents['db_backup'] = {'unrelated/data.txt': b'no backup here'}
         partition_size = (64 if kind == 'wrapped' else 16) * 1024 * 1024
         raw = out / f'{kind}.img'
-        disk_size = partition_size * 3 + 4 * 1024 * 1024
+        disk_size = partition_size * len(labels) + 4 * 1024 * 1024
         entries = bytearray(128 * 128)
         with raw.open('wb') as disk:
             disk.truncate(disk_size)
@@ -71,12 +74,12 @@ def generate(kind):
             mbr[510:] = b'\x55\xaa'
             disk.seek(0); disk.write(mbr)
             for i, label in enumerate(labels):
-                root = base / label; root.mkdir()
-                role = 'db_backup' if label == 'other_backup' else label
+                root = base / f'partition-{i}'; root.mkdir()
+                role = 'db_backup' if label in ('other_backup', '') else label
                 for relative, data in contents[role].items():
                     f = root / relative; f.parent.mkdir(parents=True, exist_ok=True); f.write_bytes(data)
                 if label == 'game_dynamic': (root / 'lib/libtest.so').symlink_to('libtest.so.1')
-                fs = base / f'{label}.ext3'
+                fs = base / f'partition-{i}.ext3'
                 with fs.open('wb') as f: f.truncate(partition_size)
                 subprocess.run(['mkfs.ext3', '-q', '-F', '-L', label, '-d', str(root), str(fs)], check=True)
                 start = 1024 * 1024 + i * partition_size
@@ -101,6 +104,6 @@ def generate(kind):
             expected['lib/libtest.so'] = expected['lib/libtest.so.1']
             (out / ('expected-wrapped.json' if kind == 'wrapped' else 'expected.json')).write_text(json.dumps({p: hashlib.sha256(data).hexdigest().upper() for p, data in expected.items()}, indent=2))
 
-for variant in (['wrapped'] if len(sys.argv) > 2 else ['valid', 'case-collision', 'missing-file', 'missing-label']):
+for variant in (['wrapped'] if len(sys.argv) > 2 else ['valid', 'case-collision', 'missing-file', 'missing-label', 'unlabelled-backup', 'ambiguous-backup', 'missing-backup']):
     generate(variant)
     print('Created', variant, flush=True)

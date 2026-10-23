@@ -28,14 +28,14 @@ The source is opened read-only. Existing output folders are refused. Failed or c
 
 ## Supported layout
 
-This is a **specific merged-content extraction profile**, not a universal disk-image browser. The image must contain a valid primary GPT and supported ext-family filesystems labelled `game_static`, `game_dynamic`, and `db_backup`. Partition numbers are discovered rather than assumed.
+This is a **specific merged-content extraction profile**, not a universal disk-image browser. The image must contain a valid primary GPT and supported ext-family filesystems labelled `game_static` and `game_dynamic`. The backup normally has the label `db_backup`. If that label is absent, the app checks unlabelled ext partitions for a root `pg_backup` directory and requires exactly one match. Missing or ambiguous matches stop inspection. Other nonempty labels are not reassigned. Partition numbers are discovered rather than assumed, and the selected backup's discovery method is recorded in the log and report.
 
 | Output | Source |
 | --- | --- |
 | `golf/` | Static content, then dynamic paths that do not already exist |
 | `assetlist.txt`, `dynamic_backup/` | `game_static` |
 | `game.bin`, `db_primary.tar.gz`, `lib/` | `game_dynamic` |
-| `pg_backup/` | `db_backup` |
+| `pg_backup/` | `db_backup`, or the unique unlabelled ext partition containing that directory |
 
 Static content wins exact-path collisions. Case-only Windows path collisions, missing required files, unsupported filesystem features, invalid filenames, and malformed image structures stop extraction. Regular-file symlinks are materialized within the virtual filesystem. Directory symlinks and special/device files are unsupported. Linux ownership, permissions, and directory timestamps are not recreated. The output is a content folder, not a bootable clone.
 

@@ -11,6 +11,7 @@ public sealed class GameImage : IDisposable
     private readonly List<Stream> slices = [];
     public List<ImagePartition> Partitions { get; } = [];
     public Dictionary<string, ExtFileSystem> FileSystems { get; } = new(StringComparer.Ordinal);
+    public string BackupDiscovery { get; private set; } = "";
     public long Length => disk.Length;
     public GameImage(string path, Action<string, double>? progress = null, CancellationToken token = default)
     {
@@ -26,7 +27,7 @@ public sealed class GameImage : IDisposable
                 sector = 4096; h = new byte[sector]; disk.Position = sector; disk.ReadExactly(h);
             }
             if (Encoding.ASCII.GetString(h, 0, 8) != "EFI PART")
-                throw new InvalidDataException("This version supports GPT images with game_dynamic, game_static and db_backup ext partitions (the supported merged-content layout). No GPT header was found.");
+                throw new InvalidDataException("This version supports GPT images with game_dynamic and game_static ext partitions and a backup partition (the supported merged-content layout). No GPT header was found.");
             int headerSize = checked((int)U32(h, 12));
             if (headerSize < 92 || headerSize > sector) throw new InvalidDataException("Invalid GPT header size.");
             uint crc = U32(h, 16); Array.Clear(h, 16, 4);
@@ -56,16 +57,43 @@ public sealed class GameImage : IDisposable
                 string label = BinaryPrimitives.ReadUInt16LittleEndian(sb.AsSpan(56)) == 0xef53
                     ? Encoding.UTF8.GetString(sb, 120, 16).TrimEnd('\0') : "(not ext)";
                 Partitions.Add(new ImagePartition(i + 1, start, end - start, label));
+                progress?.Invoke($"Partition {i + 1}: {(label.Length == 0 ? "(unlabelled ext)" : label)} ({(end - start) / 1073741824.0:N2} GiB)", 1);
                 if (label is not ("game_static" or "game_dynamic" or "db_backup")) continue;
                 if (FileSystems.ContainsKey(label)) throw new InvalidDataException($"Duplicate partition label: {label}");
                 var slice = new ImageSlice(disk, start, end - start); slices.Add(slice);
                 FileSystems.Add(label, new ExtFileSystem(slice));
             }
-            foreach (string label in new[] { "game_static", "game_dynamic", "db_backup" })
-                if (!FileSystems.ContainsKey(label)) throw new InvalidDataException($"Required ext partition '{label}' was not found. Partition numbers are never assumed.");
-            progress?.Invoke("Found all three game partitions by filesystem label.", 1);
+            foreach (string label in new[] { "game_static", "game_dynamic" })
+                if (!FileSystems.ContainsKey(label)) throw new InvalidDataException($"Required ext partition '{label}' was not found. Detected: {string.Join(", ", Partitions.Select(p => $"p{p.Number}={p.Label}"))}. Partition numbers are never assumed.");
+            if (FileSystems.ContainsKey("db_backup"))
+                BackupDiscovery = $"Backup partition p{Partitions.Single(p => p.Label == "db_backup").Number}: db_backup label.";
+            else
+            {
+                // Some images omit only the backup filesystem label. Identify its
+                // contents explicitly; never infer a role from a partition number.
+                var candidates = new List<ImagePartition>();
+                foreach (var partition in Partitions.Where(p => p.Label.Length == 0))
+                {
+                    token.ThrowIfCancellationRequested();
+                    using var fs = OpenPartition(partition);
+                    if (fs.DirectoryExists("pg_backup")) candidates.Add(partition);
+                }
+                if (candidates.Count != 1)
+                    throw new InvalidDataException(candidates.Count > 1
+                        ? $"Ambiguous backup layout: multiple unlabelled ext partitions contain pg_backup ({string.Join(", ", candidates.Select(p => $"p{p.Number}"))}). Refusing to choose a backup."
+                        : $"Required backup not found: no db_backup label or unique unlabelled ext partition containing pg_backup. Detected: {string.Join(", ", Partitions.Select(p => $"p{p.Number}={(p.Label.Length == 0 ? "(unlabelled ext)" : p.Label)}"))}.");
+                FileSystems.Add("db_backup", OpenPartition(candidates[0]));
+                BackupDiscovery = $"Backup partition p{candidates[0].Number}: unlabelled ext filesystem identified by its pg_backup directory.";
+            }
+            progress?.Invoke(BackupDiscovery, 1);
         }
         catch { Dispose(); throw; }
+    }
+    private ExtFileSystem OpenPartition(ImagePartition partition)
+    {
+        var slice = new ImageSlice(disk, partition.Offset, partition.Size);
+        slices.Add(slice);
+        return new ExtFileSystem(slice);
     }
     private static uint U32(byte[] b, int at) => BinaryPrimitives.ReadUInt32LittleEndian(b.AsSpan(at));
     private static ulong U64(byte[] b, int at) => BinaryPrimitives.ReadUInt64LittleEndian(b.AsSpan(at));

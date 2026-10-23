@@ -1,14 +1,12 @@
-# IMGC Extractor v1.0.0
+# IMGC Extractor v1.0.1
 
-Initial public release of the portable Windows x64 extractor with built-in executable checking and preparation.
+Fixes inspection of supported images whose backup filesystem has no label.
 
-- Direct IMGC and raw IMG reading without an intermediate disk image.
-- Label-based GPT/ext partition discovery and deterministic content merging.
-- Final/temporary space estimates, selected-drive free-space checks and safety margin.
-- SHA-256 verification, collision reports, cancellation and preserved partial output.
-- Supported executable-container preparation with original-byte preservation.
-- Self-contained Windows executable; no separate runtime installation required.
+- When `db_backup` is absent, locate the unique unlabelled ext partition containing a root `pg_backup` directory.
+- Reject missing or ambiguous backup candidates instead of assuming a partition number.
+- Show detected partitions and record backup discovery in the extraction log and report.
+- Retain existing labelled-image behavior, executable checks, original preservation and drive-space preflight.
 
-Download the ZIP, extract it, and run **IMGC Extractor.exe**. A SHA-256 sidecar is included as a separate release asset.
+Validated with full synthetic extraction, missing/ambiguous-backup regressions, and successful inventory/executable verification of a reference image on another Windows PC. Full extraction of that reference image remains unverified.
 
-This release supports the specific merged-content layout documented in the README. Unsupported executable formats remain extraction-only. Full large-disk extraction is not yet qualified; synthetic end-to-end extraction and bounded reference checks passed. No images or application payloads are included.
+Download the ZIP, extract it into a new folder, and run **IMGC Extractor.exe**. The release is self-contained; no separate runtime or Linux installation is needed. A SHA-256 sidecar is available as a separate asset. No disk images or application payloads are included.

@@ -1,4 +1,4 @@
-param([string]$PackageName = 'IMGC-Extractor-1.0.0-win-x64')
+param([string]$PackageName = 'IMGC-Extractor-1.0.1-win-x64')
 $ErrorActionPreference = 'Stop'
 if ($PackageName -notmatch '^[A-Za-z0-9._-]+$') { throw 'PackageName must be a simple name.' }
 $artifacts = Join-Path $PSScriptRoot 'artifacts'

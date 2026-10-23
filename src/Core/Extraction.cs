@@ -182,12 +182,13 @@ public static class Extractor
         Log($"Source: {Path.GetFullPath(source)}"); Log($"Output: {output}");
         Log($"Drive {initialSpace.Drive} ({initialSpace.Format}): free={initialSpace.FreeBytes} bytes, final data={initialSpace.FinalFileBytes}, extra temporary image=0, required including margins={initialSpace.RequiredBytes}");
         Log("Executable plan: " + plan.Preparation.Message);
+        Log(image.BackupDiscovery);
         Log("Profile: merged content folder. Static files win exact-path golf collisions. Source opened read-only.");
         void Report(string status, string? error = null) => System.IO.File.WriteAllText(reportPath, JsonSerializer.Serialize(new
         {
-            tool = "IMGC Extractor 1.0.0", status, error, source = Path.GetFullPath(source), output,
+            tool = "IMGC Extractor 1.0.1", status, error, source = Path.GetFullPath(source), output,
             spaceBeforeExtraction = initialSpace, executablePreparation = preparation, executablePlan = plan.Preparation, sourceBackupStatus = plan.SourceBackupStatus,
-            completedUtc = DateTimeOffset.UtcNow, partitions = image.Partitions,
+            completedUtc = DateTimeOffset.UtcNow, partitions = image.Partitions, backupDiscovery = image.BackupDiscovery,
             plannedFiles = plan.FinalFileCount, plannedBytes = plan.FinalBytes, verifiedFiles = receipts,
             collisionPolicy = "game_static wins exact-path golf collisions", collisions = collisionChecks,
             note = "File bytes verified with SHA-256. File symlinks materialized. Linux ownership/mode and directory times are not reproduced. Extraction does not establish game runtime compatibility."
