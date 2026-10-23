@@ -1,0 +1,21 @@
+IMGC Extractor
+
+IMGC format and modified LZO semantics:
+https://github.com/shizmob/unimgc
+https://codeberg.org/shiz/unimgc
+Copyright (c) 2019 shiz. WTFPL. See unimgc-WTFPL.txt.
+The C# implementation adds bounds checking and random-access reads.
+
+Read-only ext filesystem support: DiscUtils.Ext 0.16.13 and Core/Streams.
+https://github.com/DiscUtils/DiscUtils
+MIT. See DiscUtils-MIT.txt.
+
+Bundled .NET 8.0.32 Windows x64 runtime:
+https://github.com/dotnet/runtime
+https://github.com/dotnet/winforms
+MIT and third-party notices are included in this directory.
+
+The executable preparation module is a format decoder and integrity checker.
+It does not include any original executable, loader binary, or disk image.
+Third-party licenses apply to the corresponding components independently of
+the project's MIT license.

@@ -1,0 +1,17 @@
+**/bin/
+**/obj/
+**/__pycache__/
+tests/generated/
+artifacts/
+dist/
+*.zip
+*.sha256.txt
+*.log
+*.img
+*.imgc
+*.bin
+*.encrypted
+*.prepared
+*.user
+*.suo
+.vs/

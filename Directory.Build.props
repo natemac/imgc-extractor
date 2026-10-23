@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
+    <RepositoryUrl>https://github.com/natemac/imgc-extractor</RepositoryUrl>
+  </PropertyGroup>
+</Project>
