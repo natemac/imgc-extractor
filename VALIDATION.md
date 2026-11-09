@@ -9,6 +9,7 @@ The regression suite covers:
 - Complete extraction from synthetic IMGC and IMG files, with independently generated expected hashes.
 - Label-based partition discovery using deliberately reordered partitions.
 - Unlabelled backup discovery by directory contents, complete extraction and provenance reporting; missing and ambiguous backup rejection.
+- Unlabelled dynamic and backup discovery together, unrelated unlabelled partitions, complete extraction and discovery receipts; missing/ambiguous dynamic layouts, unrelated nonempty labels and combined roles are rejected. An explicit dynamic label takes precedence over an unlabelled duplicate.
 - Static/dynamic collision precedence and file-symlink materialization.
 - Truncated images, bad GPT checksums, missing labels/files and case-only collisions.
 - Cancellation, preservation of existing output folders, and selected-drive space accounting.
@@ -17,3 +18,5 @@ The regression suite covers:
 The Windows interface and self-contained packaging were also exercised. A user reported successful full extraction of a labelled reference image with v1.0.0. For v1.0.1, direct inspection on a second Windows PC confirmed the unlabelled backup layout, completed the file inventory and verified supported executable decoding. Automated full extraction of that large image has not been completed as part of this release validation. No extracted executable was run.
 
 Passing these checks is not a claim of universal image support or runtime compatibility. The supported layout and preparation limits are described in the README.
+
+For v1.0.2, read-only inspection of a second reference layout on another Windows PC successfully identified both unlabelled roles, completed inventory and verified supported executable decoding. Full extraction of that reference image remains untested.

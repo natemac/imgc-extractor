@@ -24,7 +24,7 @@ internal sealed class MainForm : Form
     private readonly Button cancel = new() { Text = "Cancel", AutoSize = true, Padding = new Padding(8, 6, 8, 6), Enabled = false };
     private readonly Button open = new() { Text = "Open output", AutoSize = true, Padding = new Padding(8, 6, 8, 6), Enabled = false };
     private readonly Label status = new() { Text = "Choose an IMGC or IMG file to begin.", AutoSize = true, Dock = DockStyle.Fill };
-    private readonly Label summary = new() { Text = "Profile: merged content folder\nPartitions are identified by label, not partition number.", AutoSize = true, Dock = DockStyle.Fill };
+    private readonly Label summary = new() { Text = "Profile: merged content folder\nPartitions are identified by labels or validated contents.", AutoSize = true, Dock = DockStyle.Fill };
     private readonly Label space = new() { Text = "Disk space: inspect an image to calculate final size and check the selected drive.\nExtra temporary IMG space: 0 GiB. In-progress files become the final folder.", AutoSize = true, Dock = DockStyle.Fill, Padding = new Padding(10), BackColor = Color.FromArgb(242, 246, 250) };
     private readonly ProgressBar bar = new() { Dock = DockStyle.Fill, Maximum = 1000, Height = 22 };
     private readonly TextBox details = new() { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill, BackColor = Color.FromArgb(246, 247, 249), Font = new Font("Consolas", 9) };
@@ -62,7 +62,7 @@ internal sealed class MainForm : Form
         buttons.Controls.AddRange([inspect, extract, cancel, open]); Wide(buttons, 8);
         status.Margin = new Padding(0, 0, 0, 6); status.AutoEllipsis = true; Wide(status, 9);
         bar.Margin = new Padding(0, 0, 0, 12); Wide(bar, 10); Wide(details, 11);
-        Wide(new Label { Text = "Extraction prepares files only. Playing a game requires a compatible Windows launcher/runtime.  •  v1.0.1", AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(0, 12, 0, 0), Font = new Font("Segoe UI", 9) }, 12);
+        Wide(new Label { Text = "Extraction prepares files only. Playing a game requires a compatible Windows launcher/runtime.  •  v1.0.2", AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(0, 12, 0, 0), Font = new Font("Segoe UI", 9) }, 12);
         Controls.Add(layout);
         parent.Text = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         name.Text = "Extracted Content";
@@ -162,6 +162,7 @@ internal sealed class MainForm : Form
             image = candidate; plan = result;
             foreach (var part in image!.Partitions) Append($"Partition {part.Number}: {part.Label} ({part.Size / 1073741824.0:N2} GiB)");
             Append(image.BackupDiscovery);
+            Append(image.DynamicDiscovery);
             summary.Text = $"Ready: {plan.FinalFileCount:N0} final files • {plan.FinalBytes / 1073741824.0:N2} GiB of file data\n{plan.Collisions.Count:N0} static/dynamic collisions • {plan.Files.Count(f => f.MaterializedLink):N0} file links to materialize\n" + plan.Preparation.Message;
             extract.Text = plan.Preparation.Status == "Unsupported" ? "2. Extract only (unsupported)" : "2. Extract and prepare";
             Append(summary.Text); foreach (var c in plan.Collisions.Take(50)) Append("Static wins: " + c.Kept.Relative);

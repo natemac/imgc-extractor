@@ -57,11 +57,26 @@ def generate(kind):
         if kind == 'missing-file': del contents['game_dynamic']['game.bin']
         if kind == 'wrapped': contents['game_dynamic']['game.bin'] = Path(sys.argv[2]).read_bytes()
         # Deliberately use p1=static, p2=backup, p3=dynamic, unlike the real p3/p5/p7.
-        labels = ['game_static', 'db_backup', 'game_dynamic']
+        roles = ['game_static', 'db_backup', 'game_dynamic']
+        labels = roles.copy()
         if kind == 'missing-label': labels[1] = 'other_backup'
         if kind in ('unlabelled-backup', 'ambiguous-backup', 'missing-backup'): labels[1] = ''
-        if kind == 'ambiguous-backup': labels.append('')
+        if kind == 'ambiguous-backup': labels.append(''); roles.append('db_backup')
         if kind == 'missing-backup': contents['db_backup'] = {'unrelated/data.txt': b'no backup here'}
+        if kind in ('unlabelled-dynamic', 'unlabelled-both', 'ambiguous-dynamic', 'missing-dynamic', 'combined-roles'):
+            labels[2] = ''
+        if kind == 'unlabelled-both': labels[1] = ''
+        if kind in ('ambiguous-dynamic', 'labelled-dynamic-decoy'):
+            labels.append(''); roles.append('game_dynamic')
+        if kind == 'missing-dynamic': del contents['game_dynamic']['lib/libtest.so.1']
+        if kind == 'renamed-dynamic': labels[2] = 'other_dynamic'
+        if kind == 'combined-roles':
+            labels[1] = ''; contents['db_backup'] = {'unrelated/file': b'no backup'}
+            contents['game_dynamic']['pg_backup/backup.dat'] = b'combined layout'
+        if kind == 'unlabelled-both':
+            # Unrelated blank boot/data filesystems must not be mistaken for either role.
+            contents['decoy'] = {'boot/kernel': b'not a dynamic filesystem'}
+            labels.append(''); roles.append('decoy')
         partition_size = (64 if kind == 'wrapped' else 16) * 1024 * 1024
         raw = out / f'{kind}.img'
         disk_size = partition_size * len(labels) + 4 * 1024 * 1024
@@ -75,10 +90,10 @@ def generate(kind):
             disk.seek(0); disk.write(mbr)
             for i, label in enumerate(labels):
                 root = base / f'partition-{i}'; root.mkdir()
-                role = 'db_backup' if label in ('other_backup', '') else label
+                role = roles[i]
                 for relative, data in contents[role].items():
                     f = root / relative; f.parent.mkdir(parents=True, exist_ok=True); f.write_bytes(data)
-                if label == 'game_dynamic': (root / 'lib/libtest.so').symlink_to('libtest.so.1')
+                if role == 'game_dynamic' and kind != 'missing-dynamic': (root / 'lib/libtest.so').symlink_to('libtest.so.1')
                 fs = base / f'partition-{i}.ext3'
                 with fs.open('wb') as f: f.truncate(partition_size)
                 subprocess.run(['mkfs.ext3', '-q', '-F', '-L', label, '-d', str(root), str(fs)], check=True)
@@ -104,6 +119,6 @@ def generate(kind):
             expected['lib/libtest.so'] = expected['lib/libtest.so.1']
             (out / ('expected-wrapped.json' if kind == 'wrapped' else 'expected.json')).write_text(json.dumps({p: hashlib.sha256(data).hexdigest().upper() for p, data in expected.items()}, indent=2))
 
-for variant in (['wrapped'] if len(sys.argv) > 2 else ['valid', 'case-collision', 'missing-file', 'missing-label', 'unlabelled-backup', 'ambiguous-backup', 'missing-backup']):
+for variant in (['wrapped'] if len(sys.argv) > 2 else ['valid', 'case-collision', 'missing-file', 'missing-label', 'unlabelled-backup', 'ambiguous-backup', 'missing-backup', 'unlabelled-dynamic', 'unlabelled-both', 'ambiguous-dynamic', 'missing-dynamic', 'renamed-dynamic', 'labelled-dynamic-decoy', 'combined-roles']):
     generate(variant)
     print('Created', variant, flush=True)

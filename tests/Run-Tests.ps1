@@ -20,7 +20,7 @@ foreach ($format in @('imgc','img')) {
     & python (Join-Path $PSScriptRoot 'verify_fixture.py') $output (Join-Path $generated 'expected.json')
     if ($LASTEXITCODE -ne 0) { throw 'Fixture comparison failed.' }
 }
-foreach ($variant in @('missing-label','missing-file','case-collision','ambiguous-backup','missing-backup')) {
+foreach ($variant in @('missing-label','missing-file','case-collision','ambiguous-backup','missing-backup','ambiguous-dynamic','missing-dynamic','renamed-dynamic','combined-roles')) {
     & $check inspect (Join-Path $generated ($variant + '.imgc'))
     if ($LASTEXITCODE -eq 0) { throw "Invalid fixture accepted: $variant" }
 }
@@ -30,5 +30,14 @@ Run-Check -Arguments @('extract', (Join-Path $generated 'unlabelled-backup.imgc'
 if ($LASTEXITCODE -ne 0) { throw 'Unlabelled backup fixture comparison failed.' }
 $receipt = Get-Content -Raw -LiteralPath (Join-Path $output 'Extraction-report.json') | ConvertFrom-Json
 if ($receipt.backupDiscovery -notlike '*unlabelled ext filesystem*') { throw 'Missing backup discovery provenance.' }
+foreach ($variant in @('unlabelled-dynamic','unlabelled-both','labelled-dynamic-decoy')) {
+    $output = Join-Path $generated ('test-' + $variant + '-' + [guid]::NewGuid().ToString('N'))
+    Run-Check -Arguments @('extract', (Join-Path $generated ($variant + '.imgc')), $output)
+    & python (Join-Path $PSScriptRoot 'verify_fixture.py') $output (Join-Path $generated 'expected.json')
+    if ($LASTEXITCODE -ne 0) { throw "Fixture comparison failed: $variant" }
+    $receipt = Get-Content -Raw -LiteralPath (Join-Path $output 'Extraction-report.json') | ConvertFrom-Json
+    $expectedDiscovery = if ($variant -eq 'labelled-dynamic-decoy') { '*game_dynamic label*' } else { '*unlabelled ext filesystem*' }
+    if ($receipt.dynamicDiscovery -notlike $expectedDiscovery) { throw "Incorrect dynamic discovery provenance: $variant" }
+}
 if ($WrappedExecutable -and $KnownElf) { Run-Check -Arguments @('preparation-test', $WrappedExecutable, $KnownElf, $generated) }
 Write-Host 'All selected tests passed.'

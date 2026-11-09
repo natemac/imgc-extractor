@@ -12,6 +12,7 @@ public sealed class GameImage : IDisposable
     public List<ImagePartition> Partitions { get; } = [];
     public Dictionary<string, ExtFileSystem> FileSystems { get; } = new(StringComparer.Ordinal);
     public string BackupDiscovery { get; private set; } = "";
+    public string DynamicDiscovery { get; private set; } = "";
     public long Length => disk.Length;
     public GameImage(string path, Action<string, double>? progress = null, CancellationToken token = default)
     {
@@ -63,13 +64,38 @@ public sealed class GameImage : IDisposable
                 var slice = new ImageSlice(disk, start, end - start); slices.Add(slice);
                 FileSystems.Add(label, new ExtFileSystem(slice));
             }
-            foreach (string label in new[] { "game_static", "game_dynamic" })
+            foreach (string label in new[] { "game_static" })
                 if (!FileSystems.ContainsKey(label)) throw new InvalidDataException($"Required ext partition '{label}' was not found. Detected: {string.Join(", ", Partitions.Select(p => $"p{p.Number}={p.Label}"))}. Partition numbers are never assumed.");
+            int dynamicPartition;
+            if (FileSystems.ContainsKey("game_dynamic"))
+            {
+                dynamicPartition = Partitions.Single(p => p.Label == "game_dynamic").Number;
+                DynamicDiscovery = $"Dynamic partition p{dynamicPartition}: game_dynamic label.";
+            }
+            else
+            {
+                var candidates = new List<ImagePartition>();
+                foreach (var partition in Partitions.Where(p => p.Label.Length == 0))
+                {
+                    token.ThrowIfCancellationRequested();
+                    using var fs = OpenPartition(partition);
+                    if (fs.FileExists("game.bin") && fs.FileExists("db_primary.tar.gz")
+                        && fs.DirectoryExists("golf") && fs.DirectoryExists("lib")) candidates.Add(partition);
+                }
+                if (candidates.Count != 1)
+                    throw new InvalidDataException(candidates.Count > 1
+                        ? $"Ambiguous dynamic layout: multiple unlabelled ext partitions contain game.bin, db_primary.tar.gz, golf and lib ({string.Join(", ", candidates.Select(p => $"p{p.Number}"))}). Refusing to choose a dynamic partition."
+                        : $"Required dynamic partition not found: no game_dynamic label or unique unlabelled ext partition containing game.bin, db_primary.tar.gz, golf and lib. Detected: {string.Join(", ", Partitions.Select(p => $"p{p.Number}={(p.Label.Length == 0 ? "(unlabelled ext)" : p.Label)}"))}.");
+                dynamicPartition = candidates[0].Number;
+                FileSystems.Add("game_dynamic", OpenPartition(candidates[0]));
+                DynamicDiscovery = $"Dynamic partition p{dynamicPartition}: unlabelled ext filesystem identified by game.bin, db_primary.tar.gz, golf and lib.";
+            }
+            progress?.Invoke(DynamicDiscovery, 1);
             if (FileSystems.ContainsKey("db_backup"))
                 BackupDiscovery = $"Backup partition p{Partitions.Single(p => p.Label == "db_backup").Number}: db_backup label.";
             else
             {
-                // Some images omit only the backup filesystem label. Identify its
+                // Some images omit the backup filesystem label. Identify its
                 // contents explicitly; never infer a role from a partition number.
                 var candidates = new List<ImagePartition>();
                 foreach (var partition in Partitions.Where(p => p.Label.Length == 0))
@@ -82,6 +108,8 @@ public sealed class GameImage : IDisposable
                     throw new InvalidDataException(candidates.Count > 1
                         ? $"Ambiguous backup layout: multiple unlabelled ext partitions contain pg_backup ({string.Join(", ", candidates.Select(p => $"p{p.Number}"))}). Refusing to choose a backup."
                         : $"Required backup not found: no db_backup label or unique unlabelled ext partition containing pg_backup. Detected: {string.Join(", ", Partitions.Select(p => $"p{p.Number}={(p.Label.Length == 0 ? "(unlabelled ext)" : p.Label)}"))}.");
+                if (candidates[0].Number == dynamicPartition)
+                    throw new InvalidDataException("Unsupported combined layout: the same unlabelled partition matches both dynamic and backup roles.");
                 FileSystems.Add("db_backup", OpenPartition(candidates[0]));
                 BackupDiscovery = $"Backup partition p{candidates[0].Number}: unlabelled ext filesystem identified by its pg_backup directory.";
             }
