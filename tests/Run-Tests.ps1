@@ -40,4 +40,12 @@ foreach ($variant in @('unlabelled-dynamic','unlabelled-both','labelled-dynamic-
     if ($receipt.dynamicDiscovery -notlike $expectedDiscovery) { throw "Incorrect dynamic discovery provenance: $variant" }
 }
 if ($WrappedExecutable -and $KnownElf) { Run-Check -Arguments @('preparation-test', $WrappedExecutable, $KnownElf, $generated) }
+
+foreach ($variant in @('bowling','generic-content')) {
+    $output = Join-Path $generated ('test-' + $variant + '-' + [guid]::NewGuid().ToString('N'))
+    Run-Check -Arguments @('extract', (Join-Path $generated ($variant + '.imgc')), $output)
+    & python (Join-Path $PSScriptRoot 'verify_fixture.py') $output (Join-Path $generated ('expected-' + $variant + '.json'))
+    if ($LASTEXITCODE -ne 0) { throw "Content fixture failed: $variant" }
+}
+
 Write-Host 'All selected tests passed.'

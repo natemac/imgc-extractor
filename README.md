@@ -2,6 +2,8 @@
 
 A portable Windows app for reading HDD Raw Copy Tool `.imgc` images directly, assembling a merged content folder from selected Linux partitions, and verifying the result. It also accepts decompressed `.img` files.
 
+Use only images you own or are authorized to extract. No disk images or application payloads are included.
+
 **[Download the Windows x64 release](https://github.com/natemac/imgc-extractor/releases/latest)**
 
 ## Use
@@ -30,11 +32,13 @@ The source is opened read-only. Existing output folders are refused. Failed or c
 
 This is a **specific merged-content extraction profile**, not a universal disk-image browser. The image must contain a valid primary GPT and supported ext-family filesystems. The static partition requires the `game_static` label. Dynamic and backup partitions normally have the labels `game_dynamic` and `db_backup`.
 
-If the dynamic label is absent, the app requires exactly one unlabelled ext partition containing both root files `game.bin` and `db_primary.tar.gz` and both root directories `golf` and `lib`. If the backup label is absent, it requires exactly one unlabelled ext partition containing a root `pg_backup` directory. Missing or ambiguous matches, or one unlabelled partition matching both roles, stop inspection. Existing recognized labels take precedence; other nonempty labels are not reassigned. Partition numbers are discovered rather than assumed. Both discovery methods are recorded in the log and report.
+Layouts with differently named executables, missing required metadata, or revision-4 payloads are not newly supported by this release. Manual partition recovery and runtime research are separate from this app.
+
+If the dynamic label is absent, the app requires exactly one unlabelled ext partition containing both root files `game.bin` and `db_primary.tar.gz` and the root `lib` directory; no game-specific content folder name is required. If the backup label is absent, it requires exactly one unlabelled ext partition containing a root `pg_backup` directory. Missing or ambiguous matches, or one unlabelled partition matching both roles, stop inspection. Existing recognized labels take precedence; other nonempty labels are not reassigned. Partition numbers are discovered rather than assumed. Both discovery methods are recorded in the log and report.
 
 | Output | Source |
 | --- | --- |
-| `golf/` | Static content, then dynamic paths that do not already exist |
+| Content directories (for example `bowling/`, `common/`) | All root content directories from static, then noncolliding dynamic content |
 | `assetlist.txt`, `dynamic_backup/` | `game_static` |
 | `game.bin`, `db_primary.tar.gz`, `lib/` | `game_dynamic`, or the unique unlabelled ext partition matching the complete dynamic layout |
 | `pg_backup/` | `db_backup`, or the unique unlabelled ext partition containing that directory |
@@ -84,3 +88,5 @@ Optional preparation regression checks accept your own original and known decode
 Project code is MIT licensed; third-party code and redistributables retain their own terms. The IMGC format and modified LZO implementation are based on [shiz's unimgc](https://github.com/shizmob/unimgc), under the WTFPL. Read-only ext access uses [DiscUtils](https://github.com/DiscUtils/DiscUtils), under MIT. See [third-party notices](licenses/ATTRIBUTION.txt).
 
 No disk images, application payloads, or original loader binaries are distributed.
+
+Content directory discovery excludes filesystem housekeeping (`lost+found`) and the separately handled `lib`, `dynamic_backup`, and `pg_backup` directories. Existing exact-path static files take precedence. Windows case and file/directory conflicts still stop extraction. This is a merged-content GPT/ext layout reader, not a universal disk-image converter. Executable preparation support is checked separately; unsupported wrappers remain extraction-only.

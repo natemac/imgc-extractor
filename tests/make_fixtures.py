@@ -53,6 +53,13 @@ def generate(kind):
                              'game.bin': b'not executable\n', 'db_primary.tar.gz': b'database fixture\n', 'lib/libtest.so.1': b'library fixture\n'},
             'db_backup': {'pg_backup/backup.dat': b'postgres fixture\n'},
         }
+        if kind in ('bowling', 'generic-content'):
+            content_name = 'bowling' if kind == 'bowling' else 'other_game'
+            for role in ('game_static', 'game_dynamic'):
+                contents[role] = {p.replace('golf/', content_name + '/'): data for p, data in contents[role].items()}
+            contents['game_static']['common/static.txt'] = b'common static'
+            contents['game_dynamic']['common/dynamic.txt'] = b'common dynamic'
+            contents['game_dynamic']['dynamic_only/extra.txt'] = b'additional content'
         if kind == 'case-collision': contents['game_static']['golf/STATIC.dat'] = b'bad collision'
         if kind == 'missing-file': del contents['game_dynamic']['game.bin']
         if kind == 'wrapped': contents['game_dynamic']['game.bin'] = Path(sys.argv[2]).read_bytes()
@@ -66,6 +73,7 @@ def generate(kind):
         if kind in ('unlabelled-dynamic', 'unlabelled-both', 'ambiguous-dynamic', 'missing-dynamic', 'combined-roles'):
             labels[2] = ''
         if kind == 'unlabelled-both': labels[1] = ''
+        if kind in ('bowling', 'generic-content'): labels[1] = ''; labels[2] = ''
         if kind in ('ambiguous-dynamic', 'labelled-dynamic-decoy'):
             labels.append(''); roles.append('game_dynamic')
         if kind == 'missing-dynamic': del contents['game_dynamic']['lib/libtest.so.1']
@@ -112,13 +120,13 @@ def generate(kind):
             struct.pack_into('<I', header, 16, zlib.crc32(header[:92]))
             disk.seek(512); disk.write(header); disk.write(entries)
         imgc(raw, out / f'{kind}.imgc')
-        if kind in ('valid', 'wrapped'):
+        if kind in ('valid', 'wrapped', 'bowling', 'generic-content'):
             expected = dict(contents['game_static'])
             for p, data in contents['game_dynamic'].items(): expected.setdefault(p, data)
             expected.update(contents['db_backup'])
             expected['lib/libtest.so'] = expected['lib/libtest.so.1']
-            (out / ('expected-wrapped.json' if kind == 'wrapped' else 'expected.json')).write_text(json.dumps({p: hashlib.sha256(data).hexdigest().upper() for p, data in expected.items()}, indent=2))
+            (out / (f'expected-{kind}.json' if kind != 'valid' else 'expected.json')).write_text(json.dumps({p: hashlib.sha256(data).hexdigest().upper() for p, data in expected.items()}, indent=2))
 
-for variant in (['wrapped'] if len(sys.argv) > 2 else ['valid', 'case-collision', 'missing-file', 'missing-label', 'unlabelled-backup', 'ambiguous-backup', 'missing-backup', 'unlabelled-dynamic', 'unlabelled-both', 'ambiguous-dynamic', 'missing-dynamic', 'renamed-dynamic', 'labelled-dynamic-decoy', 'combined-roles']):
+for variant in (['wrapped'] if len(sys.argv) > 2 else ['bowling', 'generic-content', 'valid', 'case-collision', 'missing-file', 'missing-label', 'unlabelled-backup', 'ambiguous-backup', 'missing-backup', 'unlabelled-dynamic', 'unlabelled-both', 'ambiguous-dynamic', 'missing-dynamic', 'renamed-dynamic', 'labelled-dynamic-decoy', 'combined-roles']):
     generate(variant)
     print('Created', variant, flush=True)

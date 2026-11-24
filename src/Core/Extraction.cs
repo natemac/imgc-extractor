@@ -79,7 +79,16 @@ public sealed class ExtractionPlan
             if (!image.FileSystems[label].FileExists(path)) throw new InvalidDataException($"Required file missing: {label}:{path}");
             Add(label, "\\" + path, path, false);
         }
-        Tree("game_static", "golf"); Tree("game_dynamic", "golf", true);
+        // Content names vary between games; merge every non-system content directory.
+        // Dedicated metadata/library/backup paths retain their explicit source roles.
+        var reserved = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "lost+found", "lib", "dynamic_backup", "pg_backup" };
+        foreach (string label in new[] { "game_static", "game_dynamic" })
+            foreach (string path in image.FileSystems[label].GetDirectories("\\").Order(StringComparer.Ordinal))
+            {
+                string name = path[(path.LastIndexOf('\\') + 1)..];
+                if (!reserved.Contains(name)) Tree(label, name, label == "game_dynamic");
+            }
         FileItem("game_dynamic", "game.bin"); FileItem("game_dynamic", "db_primary.tar.gz"); Tree("game_dynamic", "lib");
         FileItem("game_static", "assetlist.txt"); Tree("game_static", "dynamic_backup"); Tree("db_backup", "pg_backup");
         progress?.Invoke("Checking executable format and preparation integrity...");
@@ -184,14 +193,14 @@ public static class Extractor
         Log("Executable plan: " + plan.Preparation.Message);
         Log(image.BackupDiscovery);
         Log(image.DynamicDiscovery);
-        Log("Profile: merged content folder. Static files win exact-path golf collisions. Source opened read-only.");
+        Log("Profile: merged content folder. Static files win exact-path content collisions. Source opened read-only.");
         void Report(string status, string? error = null) => System.IO.File.WriteAllText(reportPath, JsonSerializer.Serialize(new
         {
-            tool = "IMGC Extractor 1.0.2", status, error, source = Path.GetFullPath(source), output,
+            tool = "IMGC Extractor 1.0.3", status, error, source = Path.GetFullPath(source), output,
             spaceBeforeExtraction = initialSpace, executablePreparation = preparation, executablePlan = plan.Preparation, sourceBackupStatus = plan.SourceBackupStatus,
             completedUtc = DateTimeOffset.UtcNow, partitions = image.Partitions, backupDiscovery = image.BackupDiscovery, dynamicDiscovery = image.DynamicDiscovery,
             plannedFiles = plan.FinalFileCount, plannedBytes = plan.FinalBytes, verifiedFiles = receipts,
-            collisionPolicy = "game_static wins exact-path golf collisions", collisions = collisionChecks,
+            collisionPolicy = "game_static wins exact-path content collisions", collisions = collisionChecks,
             note = "File bytes verified with SHA-256. File symlinks materialized. Linux ownership/mode and directory times are not reproduced. Extraction does not establish game runtime compatibility."
         }, new JsonSerializerOptions { WriteIndented = true }));
         try

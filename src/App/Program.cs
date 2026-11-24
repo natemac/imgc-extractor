@@ -62,7 +62,7 @@ internal sealed class MainForm : Form
         buttons.Controls.AddRange([inspect, extract, cancel, open]); Wide(buttons, 8);
         status.Margin = new Padding(0, 0, 0, 6); status.AutoEllipsis = true; Wide(status, 9);
         bar.Margin = new Padding(0, 0, 0, 12); Wide(bar, 10); Wide(details, 11);
-        Wide(new Label { Text = "Extraction prepares files only. Playing a game requires a compatible Windows launcher/runtime.  •  v1.0.2", AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(0, 12, 0, 0), Font = new Font("Segoe UI", 9) }, 12);
+        Wide(new Label { Text = "Extraction prepares files only. Playing a game requires a compatible Windows launcher/runtime.  •  v1.0.3", AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(0, 12, 0, 0), Font = new Font("Segoe UI", 9) }, 12);
         Controls.Add(layout);
         parent.Text = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         name.Text = "Extracted Content";

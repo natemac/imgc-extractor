@@ -20,3 +20,9 @@ The Windows interface and self-contained packaging were also exercised. A user r
 Passing these checks is not a claim of universal image support or runtime compatibility. The supported layout and preparation limits are described in the README.
 
 For v1.0.2, read-only inspection of a second reference layout on another Windows PC successfully identified both unlabelled roles, completed inventory and verified supported executable decoding. Full extraction of that reference image remains untested.
+
+## 1.0.3 content-independent extraction
+
+The Windows synthetic regression suite passes, including unlabelled bowling and arbitrary-name content fixtures, static/dynamic merging, common and dynamic-only directories, byte hashes, symlink materialization, missing markers, ambiguous roles, and conflicting paths. These fixtures use unsupported dummy executables and correctly remain extraction-only. No real bowling IMGC was supplied or extracted for this update; the supplied screenshot demonstrates an output layout, not the contents of the failing image.
+
+Release verification on November 24, 2026: reran the complete synthetic Run-Tests.ps1 suite successfully. Later manual investigation of a different source layout did not establish support in this app; layouts missing the required executable/metadata markers remain unsupported. Revision-4 recovery and runtime experiments are not included.

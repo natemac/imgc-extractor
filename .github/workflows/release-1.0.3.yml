@@ -1,0 +1,54 @@
+name: Release IMGC Extractor 1.0.3
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/release-1.0.3.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tests/make_fixtures.py tests/generated
+      - uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-fixtures
+          path: tests/generated/
+          retention-days: 1
+  release:
+    needs: fixtures
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - uses: actions/download-artifact@v4
+        with:
+          name: synthetic-fixtures
+          path: tests/generated
+      - name: Run regression suite
+        shell: pwsh
+        run: ./tests/Run-Tests.ps1
+      - name: Build portable package
+        shell: pwsh
+        run: ./Build.ps1
+      - name: Publish verified package
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = 'artifacts/IMGC-Extractor-1.0.3-win-x64.zip'
+          $sidecar = $zip + '.sha256.txt'
+          $expected = (Get-Content $sidecar).Split(' ')[0]
+          if ((Get-FileHash $zip).Hash -ne $expected) { throw 'Package checksum mismatch' }
+          gh release create v1.0.3 $zip $sidecar --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'IMGC Extractor v1.0.3' --notes-file RELEASE-NOTES.md --latest
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }

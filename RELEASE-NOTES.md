@@ -1,13 +1,12 @@
-# IMGC Extractor v1.0.2
+# IMGC Extractor v1.0.3
 
-Fixes inspection of supported images whose dynamic filesystem has no label.
+Supports content directory names beyond the original extraction profile.
 
-- When `game_dynamic` is absent, require a unique unlabelled ext partition containing root files `game.bin` and `db_primary.tar.gz` and root directories `golf` and `lib`.
-- Support images with both dynamic and backup labels absent; retain the existing backup discovery rule.
-- Reject missing, ambiguous or combined-role candidates instead of assuming a partition number.
-- Record both dynamic and backup discovery in the interface, extraction log and report.
-- Preserve existing labelled-image behavior, executable checks, original-byte preservation and drive-space preflight.
+- Discover an unlabelled dynamic partition using game.bin, db_primary.tar.gz and lib, without requiring a game-specific content directory.
+- Merge content directories such as bowling, common and other names, preserving static-file precedence.
+- Show candidate root entries to help diagnose unsupported layouts.
+- Preserve ambiguity rejection, source read-only access, copied-file hash checks and drive-space preflight.
 
-Validated with full synthetic extraction, missing/ambiguous layout regressions, explicit-label precedence, and successful inventory/executable verification of a reference image on another Windows PC. Full extraction of that reference image remains unverified.
+The complete synthetic regression suite passed, including arbitrary content names, merging, missing and ambiguous partitions, collision handling and byte verification. This release does not add revision-4 executable preparation, a universal partition browser or runtime compatibility. Layouts without the required game.bin/metadata structure remain unsupported. No game files, private research or cabinet adapters are included.
 
-Download the ZIP, extract it into a new folder, and run **IMGC Extractor.exe**. The release is self-contained; no separate runtime or Linux installation is needed. A SHA-256 sidecar is available as a separate asset. No disk images or application payloads are included.
+Download and extract the Windows x64 ZIP into a new folder, then run IMGC Extractor.exe. A SHA-256 sidecar is provided.

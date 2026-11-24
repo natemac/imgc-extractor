@@ -79,16 +79,17 @@ public sealed class GameImage : IDisposable
                 {
                     token.ThrowIfCancellationRequested();
                     using var fs = OpenPartition(partition);
+                    progress?.Invoke($"Dynamic candidate p{partition.Number} root entries: {string.Join(", ", fs.GetFileSystemEntries("\\").Take(64))}", 1);
                     if (fs.FileExists("game.bin") && fs.FileExists("db_primary.tar.gz")
-                        && fs.DirectoryExists("golf") && fs.DirectoryExists("lib")) candidates.Add(partition);
+                        && fs.DirectoryExists("lib")) candidates.Add(partition);
                 }
                 if (candidates.Count != 1)
                     throw new InvalidDataException(candidates.Count > 1
-                        ? $"Ambiguous dynamic layout: multiple unlabelled ext partitions contain game.bin, db_primary.tar.gz, golf and lib ({string.Join(", ", candidates.Select(p => $"p{p.Number}"))}). Refusing to choose a dynamic partition."
-                        : $"Required dynamic partition not found: no game_dynamic label or unique unlabelled ext partition containing game.bin, db_primary.tar.gz, golf and lib. Detected: {string.Join(", ", Partitions.Select(p => $"p{p.Number}={(p.Label.Length == 0 ? "(unlabelled ext)" : p.Label)}"))}.");
+                        ? $"Ambiguous dynamic layout: multiple unlabelled ext partitions contain game.bin, db_primary.tar.gz and lib ({string.Join(", ", candidates.Select(p => $"p{p.Number}"))}). Refusing to choose a dynamic partition."
+                        : $"Required dynamic partition not found: no game_dynamic label or unique unlabelled ext partition containing game.bin, db_primary.tar.gz and lib. Detected: {string.Join(", ", Partitions.Select(p => $"p{p.Number}={(p.Label.Length == 0 ? "(unlabelled ext)" : p.Label)}"))}.");
                 dynamicPartition = candidates[0].Number;
                 FileSystems.Add("game_dynamic", OpenPartition(candidates[0]));
-                DynamicDiscovery = $"Dynamic partition p{dynamicPartition}: unlabelled ext filesystem identified by game.bin, db_primary.tar.gz, golf and lib.";
+                DynamicDiscovery = $"Dynamic partition p{dynamicPartition}: unlabelled ext filesystem identified by game.bin, db_primary.tar.gz and lib.";
             }
             progress?.Invoke(DynamicDiscovery, 1);
             if (FileSystems.ContainsKey("db_backup"))

@@ -13,7 +13,7 @@ assert report['status'] == 'Verified'
 assert len(report['verifiedFiles']) == len(expected)
 assert len(report['collisions']) == 1
 assert report['collisions'][0]['identical'] is False
-assert report['collisions'][0]['path'] == 'golf\\shared.txt'
+assert report['collisions'][0]['path'].replace('\\', '/') == next(p for p in expected if p.endswith('/shared.txt'))
 assert any(f['MaterializedLink'] for f in report['verifiedFiles'])
 if 'game.bin.encrypted' in expected:
     preparation = report['executablePreparation']
